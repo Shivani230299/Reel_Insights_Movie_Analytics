@@ -1,4 +1,9 @@
 # 🎬 Reel Insights - TMDB Movie Industry Analysis
+# 🎬 Reel Insights - TMDB Movie Analytics Dashboard
+
+**Live Demo:** https://reelinsightsmovieanalytics-nprfnh7u3wsrhk2d9xf49r.streamlit.app/
+
+Explore movies, ratings, revenue, and trends with an interactive dashboard built with Streamlit and Python.
 
 ## Project Overview
 Analysis of TMDB movies to understand what makes a movie successful.
