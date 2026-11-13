@@ -9,7 +9,6 @@ st.set_page_config(page_title="Reel Insights - TMDB Dashboard", layout="wide")
 @st.cache_data
 def load_data():
     base = Path(__file__).parent.parent / "Cleaned data"
-    # Try both Cleaned data and cleaned_data folder names
     if not base.exists():
         base = Path(__file__).parent.parent / "Cleaned_Data"
     movies = pd.read_csv(base / "movies_clean.csv", low_memory=False)
@@ -23,7 +22,6 @@ def load_data():
 movies, genres, mg, cast_df, crew_df, kw_df = load_data()
 
 # ---------- NORMALIZE COLUMN NAMES ----------
-# Your CSVs may have id / movie_id / title / name etc. This makes code work either way
 def find_col(df, options):
     for c in options:
         if c in df.columns:
@@ -37,6 +35,9 @@ m_budget = find_col(movies, ["budget"])
 m_rev = find_col(movies, ["revenue"])
 m_rating = find_col(movies, ["vote_average", "rating", "voteAverage"])
 m_lang = find_col(movies, ["original_language", "language"])
+m_runtime = find_col(movies, ["runtime"])
+m_popularity = find_col(movies, ["popularity"])
+m_vote_count = find_col(movies, ["vote_count"])
 
 g_id = find_col(genres, ["id", "genre_id", "genreId"])
 g_name = find_col(genres, ["name", "genre_name", "genre"])
@@ -80,16 +81,12 @@ st.sidebar.info("Filters are saved in session_state and apply to Dashboard + Que
 # ---------- FILTER FUNCTION ----------
 def get_filtered():
     df = movies.copy()
-    # Genre filter
     if st.session_state.genre_sel and len(st.session_state.genre_sel) != len(all_genres):
         ids = movies_genres[movies_genres[g_name].isin(st.session_state.genre_sel)]["movie_id"].unique()
         df = df[df[m_id].isin(ids)]
-    # Year filter
     y1, y2 = st.session_state.year_range
     df = df[(df["year"] >= y1) & (df["year"] <= y2)]
-    # Rating filter
     df = df[df[m_rating] >= st.session_state.min_rating]
-    # Language filter
     if st.session_state.lang_sel != "All":
         df = df[df[m_lang] == st.session_state.lang_sel]
     return df
@@ -100,12 +97,11 @@ filtered = get_filtered()
 if page == "Filters":
     st.title("Page 1 - Filters")
     st.write("Select filters once. They will apply to Dashboard and Query Explorer.")
-
     st.session_state.genre_sel = st.multiselect("Select Genre", all_genres, default=st.session_state.genre_sel)
     st.session_state.year_range = st.slider("Release Year Range", min_year, max_year, value=st.session_state.year_range)
     st.session_state.min_rating = st.slider("Minimum Rating", 0.0, 10.0, value=float(st.session_state.min_rating), step=0.5)
     st.session_state.lang_sel = st.selectbox("Select Language", ["All"] + all_langs, index=(["All"] + all_langs).index(st.session_state.lang_sel))
-
+    filtered = get_filtered()
     st.markdown("---")
     st.metric("Movies matching current filters", len(filtered))
     st.success(f"Showing {len(filtered)} movies out of {len(movies)} total movies.")
@@ -116,11 +112,9 @@ elif page == "Dashboard":
     st.title("Page 2 - Dashboard")
     st.write(f"Showing results for {len(filtered)} movies with current filters.")
 
-    # KPIs
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("Total Movies", len(filtered))
     c2.metric("Total Genres", len(all_genres))
-    # Total actors - try to find actor column
     actor_col = None
     for cand in ["name", "actor", "actor_name", "cast_name"]:
         if cand in cast_df.columns:
@@ -131,13 +125,11 @@ elif page == "Dashboard":
     c4.metric("Average Rating", round(filtered[m_rating].mean(), 2) if len(filtered) > 0 else 0)
 
     st.markdown("---")
-    # Top 10 by Revenue
     st.subheader("Top 10 Movies by Revenue")
     top10 = filtered.sort_values(m_rev, ascending=False).head(10)
     fig1 = px.bar(top10, x=m_title, y=m_rev, color=m_rev, title="Top 10 by Revenue")
     st.plotly_chart(fig1, use_container_width=True)
 
-    # Genre distribution + Budget vs Revenue
     colA, colB = st.columns(2)
     with colA:
         st.subheader("Genre Distribution")
@@ -150,17 +142,41 @@ elif page == "Dashboard":
         fig3 = px.scatter(filtered, x=m_budget, y=m_rev, hover_data=[m_title], opacity=0.6)
         st.plotly_chart(fig3, use_container_width=True)
 
-    # Insight
     if len(genre_counts) > 0:
         top_genre = genre_counts.iloc[0]["Genre"]
         st.info(f"Insight: Highest count genre in filtered data is {top_genre}. Top grossing movie is {top10.iloc[0][m_title]} with revenue {top10.iloc[0][m_rev]:,.0f}.")
+
+    st.markdown("---")
+    st.subheader("Additional Analysis - 5 More Charts")
+
+    st.subheader("4. Distribution of Budget")
+    fig4 = px.histogram(filtered, x=m_budget, nbins=30, title="Distribution of Budget")
+    st.plotly_chart(fig4, use_container_width=True)
+
+    st.subheader("5. Distribution of Runtime")
+    fig5 = px.histogram(filtered, x=m_runtime, nbins=30, title="Distribution of Runtime")
+    st.plotly_chart(fig5, use_container_width=True)
+
+    st.subheader("6. Distribution of Vote Average")
+    fig6 = px.histogram(filtered, x=m_rating, nbins=20, title="Distribution of Vote Average")
+    st.plotly_chart(fig6, use_container_width=True)
+
+    st.subheader("7. Popularity vs Vote Count")
+    fig7 = px.scatter(filtered, x=m_popularity, y=m_vote_count, title="Popularity vs Vote Count", opacity=0.5)
+    st.plotly_chart(fig7, use_container_width=True)
+
+    st.subheader("8. Average Rating by Genre")
+    genre_movies = movies_genres[movies_genres["movie_id"].isin(filtered[m_id])]
+    genre_merged = genre_movies.merge(filtered, left_on="movie_id", right_on=m_id)
+    genre_rating = genre_merged.groupby(g_name)[m_rating].mean().sort_values().reset_index()
+    fig8 = px.bar(genre_rating, x=m_rating, y=g_name, orientation="h", title="Average Rating by Genre")
+    st.plotly_chart(fig8, use_container_width=True)
 
 # ================= PAGE 3: QUERY EXPLORER =================
 else:
     st.title("Page 3 - Query Explorer")
     st.write("Select any of your 10 SQL questions. Result is calculated from your Cleaned CSVs.")
 
-    # Prepare helper dataframes
     cast_actor = None
     for cand in ["name", "actor", "actor_name", "cast_name"]:
         if cand in cast_df.columns:
@@ -224,7 +240,6 @@ else:
 
     elif choice.startswith("Q2"):
         temp = filtered.copy()
-        # attach genre names
         genre_map = movies_genres.groupby("movie_id")[g_name].apply(lambda x: ", ".join(x)).reset_index()
         temp = temp.merge(genre_map, left_on=m_id, right_on="movie_id", how="left")
         result = temp.sort_values(m_rev, ascending=False).head(10)[[m_title, g_name, m_rev]]
