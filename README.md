@@ -1,4 +1,3 @@
-# 🎬 Reel Insights - TMDB Movie Industry Analysis
 # 🎬 Reel Insights - TMDB Movie Analytics Dashboard
 
 **Live Demo:** https://reelinsightsmovieanalytics-nprfnh7u3wsrhk2d9xf49r.streamlit.app/
@@ -37,11 +36,15 @@ Loaded to MySQL using: pymysql + sqlalchemy
 5. Budget vs Revenue = 0.68, Rating vs Revenue = 0.08: Budget decides revenue, rating does NOT decide revenue.
 
 ## 🛠️ Tools Used
-Python, Pandas, MySQL, MySQL Workbench, Matplotlib, Seaborn, Streamlit, VS Code
+**Dashboard:** Python, Pandas, Numpy, Plotly, Streamlit
+**Notebooks / EDA & Visualization:** Python, Pandas, Matplotlib, Seaborn
+**Database:** MySQL, MySQL Workbench
+**IDE:** VS Code
 
 ## ▶️ How to Run Dashboard
 streamlit run Dashboard/app.py
 
 ## 👩‍💻 Author
 Shivani - GUVI Data Science Project
-GitHub: github.com/Shivani230299/Reel_Insights_Movie_Analytics
+GitHub Profile: https://github.com/Shivani230299
+Repository: https://github.com/Shivani230299/Reel_Insights_Movie_Analytics
